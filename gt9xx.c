@@ -123,8 +123,9 @@ static bool gt9xx_setup() {
   if (!u2hts_i2c_detect_slave(gt9xx.i2c_addr)) {
     if (u2hts_i2c_detect_slave(gt9xx.alt_i2c_addr))
       gt9xx.i2c_addr = gt9xx.alt_i2c_addr;
-  } else
-    return false;
+    else
+      return false;
+  }
 
   gt9xx_product_info info = {0};
   gt9xx_i2c_read(GT9XX_PRODUCT_INFO_START_REG, &info, sizeof(info));
