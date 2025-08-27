@@ -16,7 +16,7 @@ static u2hts_touch_controller_config mycontroller_get_config();
 static u2hts_touch_controller_operations mycontroller_ops = {
     .setup = &mycontroller_setup,
     .fetch = &mycontroller_coord_fetch,
-    // if your controller does not supports auto config, leave this empty
+    // if your controller does not supports auto config, leave this callback empty
     // 如果你的控制器不支持自动获取配置，请将下面这条函数留空
     .get_config = &mycontroller_get_config};
 
