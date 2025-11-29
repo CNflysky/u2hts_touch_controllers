@@ -7,7 +7,7 @@
 */
 
 #include "u2hts_core.h"
-static bool ft54x6_setup();
+static bool ft54x6_setup(U2HTS_BUS_TYPES bus_type);
 static void ft54x6_coord_fetch(const u2hts_config *cfg,
                                u2hts_hid_report *report);
 
@@ -16,6 +16,7 @@ static u2hts_touch_controller_operations ft54x6_ops = {
 
 static u2hts_touch_controller ft54x6 = {.name = "ft54x6",
                                         .i2c_addr = 0x38,
+                                        .i2c_speed = 100 * 1000,  // 100 KHz
                                         .irq_flag = U2HTS_IRQ_TYPE_FALLING,
                                         .operations = &ft54x6_ops};
 
@@ -55,7 +56,8 @@ inline static uint8_t ft54x6_read_byte(uint8_t reg) {
   return var;
 }
 
-inline static bool ft54x6_setup() {
+inline static bool ft54x6_setup(U2HTS_BUS_TYPES bus_type) {
+  U2HTS_UNUSED(bus_type);
   u2hts_tprst_set(false);
   u2hts_delay_ms(50);
   u2hts_tprst_set(true);

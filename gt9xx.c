@@ -8,7 +8,7 @@
 
 #include "u2hts_core.h"
 
-static bool gt9xx_setup();
+static bool gt9xx_setup(U2HTS_BUS_TYPES bus_type);
 static void gt9xx_coord_fetch(const u2hts_config* cfg,
                               u2hts_hid_report* report);
 static u2hts_touch_controller_config gt9xx_get_config();
@@ -21,6 +21,7 @@ static u2hts_touch_controller_operations gt9xx_ops = {
 static u2hts_touch_controller gt9xx = {.name = "gt9xx",
                                        .i2c_addr = 0x5d,
                                        .alt_i2c_addr = 0x14,
+                                       .i2c_speed = 400 * 1000,  // 400 KHz
                                        .irq_flag = U2HTS_IRQ_TYPE_FALLING,
                                        .operations = &gt9xx_ops};
 
@@ -52,10 +53,10 @@ typedef struct __packed {
 } gt9xx_config;
 
 // ref linux/drivers/input/touchscreen/goodix.c
-const static char* gt1x_products[] = {"1151", "1158", "5663", "5688",
+static const char* gt1x_products[] = {"1151", "1158", "5663", "5688",
                                       "917S", "9286", NULL};
 
-const static char* gt9x_products[] = {"911", "9271", "9110", "9111",
+static const char* gt9x_products[] = {"911", "9271", "9110", "9111",
                                       "927", "928",  "912",  "9147",
                                       "967", "615",  NULL};
 
@@ -118,7 +119,9 @@ static void gt9xx_coord_fetch(const u2hts_config* cfg,
   }
 }
 
-static bool gt9xx_setup() {
+static bool gt9xx_setup(U2HTS_BUS_TYPES bus_type) {
+  // GT9xx only supports I2C bus.
+  U2HTS_UNUSED(bus_type);
   u2hts_tprst_set(false);
   u2hts_delay_ms(20);
   u2hts_tpint_set(false);

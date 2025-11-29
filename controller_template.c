@@ -8,23 +8,32 @@
 */
 
 #include "u2hts_core.h"
-static bool mycontroller_setup();
-static void mycontroller_coord_fetch(const u2hts_config *cfg,
-                                     u2hts_hid_report *report);
+static bool mycontroller_setup(U2HTS_BUS_TYPES bus_type);
+static void mycontroller_coord_fetch(const u2hts_config* cfg,
+                                     u2hts_hid_report* report);
 static u2hts_touch_controller_config mycontroller_get_config();
 
 static u2hts_touch_controller_operations mycontroller_ops = {
     .setup = &mycontroller_setup,
     .fetch = &mycontroller_coord_fetch,
-    // if your controller does not supports auto config, leave this callback empty
-    // 如果你的控制器不支持自动获取配置，请将下面这条函数留空
+    // if your controller does not supports auto config, leave this callback
+    // empty 如果你的控制器不支持自动获取配置，请将下面这条函数留空
     .get_config = &mycontroller_get_config};
 
 static u2hts_touch_controller mycontroller = {
-    .name = "mycontroller",   // controller name 控制器名称
-    .i2c_addr = 0xFF,                    // I2C slave addr I2C从机地址
+    .name = "mycontroller",  // controller name 控制器名称
+    // I2C related
+    .i2c_addr = 0xFF,         // I2C slave addr I2C从机地址
+    .alt_i2c_addr = 0xFE,     // Alternative I2C addr 替代I2C地址
+    .i2c_speed = 400 * 1000,  // I2C speed in Hz I2C速度，单位为Hz
+    // SPI related
+    .spi_cpha = false,
+    .spi_cpol = false,
+    .spi_speed = 1000 * 1000,            // Hz
     .irq_flag = U2HTS_IRQ_TYPE_FALLING,  // irq flag 中断标志
     .operations = &mycontroller_ops};
+
+static U2HTS_BUS_TYPES mycontroller_bus_type = UB_I2C;
 
 // register controller
 // 注册控制器
@@ -39,6 +48,11 @@ U2HTS_TOUCH_CONTROLLER(mycontroller);
 // config register
 // 配置寄存器
 #define MYCONTROLLER_CONFIG_START_REG 0x0100
+
+// rw byte on SPI mode
+// SPI模式下的收发控制字节
+#define MYCONTROLLER_SPI_CMD_WRITE 0x00
+#define MYCONTROLLER_SPI_CMD_READ 0x01
 
 // example touch point data layout
 // 示例触摸数据结构布局
@@ -58,37 +72,68 @@ typedef struct __packed {
   uint8_t max_tps;
 } mycontroller_config;
 
-inline static void mycontroller_i2c_read(uint16_t reg, void *data,
-                                         size_t data_size) {
-  u2hts_i2c_mem_read(mycontroller.i2c_addr, reg, sizeof(reg), data, data_size);
+inline static void mycontroller_read(uint16_t reg, void* data,
+                                     size_t data_size) {
+  switch (mycontroller_bus_type) {
+    case UB_I2C:
+      u2hts_i2c_mem_read(mycontroller.i2c_addr, reg, sizeof(reg), data,
+                         data_size);
+      break;
+    case UB_SPI:
+      uint8_t buf[1 + data_size + sizeof(reg)];
+      memset(buf, 0x00, sizeof(buf));
+      *(uint8_t*)buf = MYCONTROLLER_SPI_CMD_READ;
+      *(uint16_t*)(buf + 1) = reg;
+      u2hts_spi_transfer(buf, sizeof(buf));
+      memcpy(data, buf + 1 + sizeof(uint16_t), data_size);
+      break;
+  }
 }
 
-inline static void mycontroller_i2c_write(uint16_t reg, void *data,
-                                          size_t data_size) {
-  u2hts_i2c_mem_write(mycontroller.i2c_addr, reg, sizeof(reg), data, data_size);
+inline static void mycontroller_write(uint16_t reg, void* data,
+                                      size_t data_size) {
+  switch (mycontroller_bus_type) {
+    case UB_I2C:
+      u2hts_i2c_mem_write(mycontroller.i2c_addr, reg, sizeof(reg), data,
+                          data_size);
+      break;
+    case UB_SPI:
+      uint8_t buf[1 + data_size + sizeof(reg)];
+      *(uint8_t*)buf = MYCONTROLLER_SPI_CMD_WRITE;
+      *(uint16_t*)(buf + 1) = reg;
+      memcpy(buf + 1 + sizeof(uint16_t), data, data_size);
+      u2hts_spi_transfer(buf, sizeof(buf));
+      break;
+  }
 }
 
 inline static uint8_t mycontroller_read_byte(uint16_t reg) {
   uint8_t var = 0;
-  mycontroller_i2c_read(reg, &var, sizeof(var));
+  mycontroller_read(reg, &var, sizeof(var));
   return var;
 }
 
 inline static void mycontroller_write_byte(uint16_t reg, uint8_t data) {
-  mycontroller_i2c_write(reg, &data, sizeof(data));
+  mycontroller_write(reg, &data, sizeof(data));
 }
 
-inline static bool mycontroller_setup() {
+inline static bool mycontroller_setup(U2HTS_BUS_TYPES bus_type) {
   // do hardware reset
   // 进行硬件复位
   u2hts_tprst_set(false);
   u2hts_delay_ms(100);
   u2hts_tprst_set(true);
   u2hts_delay_ms(50);
-  // detect controller
-  // 检测控制器
-  bool ret = u2hts_i2c_detect_slave(mycontroller.i2c_addr);
-  if (!ret) return ret;
+
+  // save bus_type value for further use
+  // 保存bus_type的值以供后用
+  mycontroller_bus_type = bus_type;
+
+  if (bus_type == UB_I2C) {  // detect controller
+    // 检测控制器
+    bool ret = u2hts_i2c_detect_slave(mycontroller.i2c_addr);
+    if (!ret) return ret;
+  }
 
   // if controller needs more steps to fully initialise, do it here.
   // 如果控制器还需要一些初始化才能正常工作，请在这里完成。
@@ -96,8 +141,8 @@ inline static bool mycontroller_setup() {
   return true;
 }
 
-inline static void mycontroller_coord_fetch(const u2hts_config *cfg,
-                                            u2hts_hid_report *report) {
+inline static void mycontroller_coord_fetch(const u2hts_config* cfg,
+                                            u2hts_hid_report* report) {
   // this function will be called immediately when touch interrupt (ATTN)
   // triggered. some controller require clear it's internal interrupt flag after
   // irq generated otherwise ATTN signal won't stop from emitting.

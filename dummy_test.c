@@ -21,7 +21,8 @@
 #include <stdlib.h>
 
 #include "u2hts_core.h"
-static bool dummy_setup() {
+static bool dummy_setup(U2HTS_BUS_TYPES bus_type) {
+  U2HTS_UNUSED(bus_type);
   srand(u2hts_get_scan_time());
   return true;
 }
@@ -59,6 +60,7 @@ static u2hts_touch_controller_operations dummy_ops = {
 
 static u2hts_touch_controller dummy = {.name = "dummy",
                                        .i2c_addr = 0x00,
+                                       .i2c_speed = 100 * 1000,  // 100 KHz
                                        .irq_flag = 0xFF,
                                        .operations = &dummy_ops};
 U2HTS_TOUCH_CONTROLLER(dummy);
