@@ -20,8 +20,9 @@ static u2hts_touch_controller_operations rmi_ops = {
     .get_config = &rmi_f11_get_config};
 
 static u2hts_touch_controller rmi_f11 = {.name = "rmi_f11",
-                                         .irq_flag = U2HTS_IRQ_TYPE_LOW,
+                                         .irq_type = IRQ_TYPE_LEVEL_LOW,
                                          .i2c_addr = 0x2c,
+                                         .alt_i2c_addr = 0x20,
                                          .i2c_speed = 400 * 1000,  // 400 KHz
                                          .operations = &rmi_ops};
 
