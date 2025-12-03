@@ -61,6 +61,6 @@ static u2hts_touch_controller_operations dummy_ops = {
 static u2hts_touch_controller dummy = {.name = "dummy",
                                        .i2c_addr = 0x00,
                                        .i2c_speed = 100 * 1000,  // 100 KHz
-                                       .irq_flag = 0xFF,
+                                       .irq_type = 0xFF,
                                        .operations = &dummy_ops};
 U2HTS_TOUCH_CONTROLLER(dummy);

@@ -17,7 +17,7 @@ static u2hts_touch_controller_operations cst8xx_ops = {
 static u2hts_touch_controller cst8xx = {.name = "cst8xx",
                                         .i2c_addr = 0x15,
                                         .i2c_speed = 100 * 1000,  // 100 KHz
-                                        .irq_flag = U2HTS_IRQ_TYPE_FALLING,
+                                        .irq_type = IRQ_TYPE_EDGE_FALLING,
                                         .operations = &cst8xx_ops};
 
 U2HTS_TOUCH_CONTROLLER(cst8xx);

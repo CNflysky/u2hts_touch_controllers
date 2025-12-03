@@ -17,7 +17,7 @@ static u2hts_touch_controller_operations ft54x6_ops = {
 static u2hts_touch_controller ft54x6 = {.name = "ft54x6",
                                         .i2c_addr = 0x38,
                                         .i2c_speed = 100 * 1000,  // 100 KHz
-                                        .irq_flag = U2HTS_IRQ_TYPE_FALLING,
+                                        .irq_type = IRQ_TYPE_EDGE_FALLING,
                                         .operations = &ft54x6_ops};
 
 U2HTS_TOUCH_CONTROLLER(ft54x6);

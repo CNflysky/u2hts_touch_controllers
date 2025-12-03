@@ -22,7 +22,7 @@ static u2hts_touch_controller gt9xx = {.name = "gt9xx",
                                        .i2c_addr = 0x5d,
                                        .alt_i2c_addr = 0x14,
                                        .i2c_speed = 400 * 1000,  // 400 KHz
-                                       .irq_flag = U2HTS_IRQ_TYPE_FALLING,
+                                       .irq_type = IRQ_TYPE_EDGE_FALLING,
                                        .operations = &gt9xx_ops};
 
 U2HTS_TOUCH_CONTROLLER(gt9xx);
