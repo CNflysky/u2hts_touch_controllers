@@ -83,7 +83,7 @@ static uint16_t gt9xx_get_config_start_addr(const char* product_id) {
     if (!strcmp(product_id, gt1x_products[i]))
       return GT9XX_GT1X_CONFIG_START_REG;
   for (uint8_t i = 0; gt9x_products[i]; i++)
-    if (!strcmp(product_id, gt1x_products[i]))
+    if (!strcmp(product_id, gt9x_products[i]))
       return GT9XX_GT9X_CONFIG_START_REG;
   return GT9XX_GT9X_CONFIG_START_REG;
 }
