@@ -17,20 +17,20 @@ static u2hts_touch_controller_operations mycontroller_ops = {
     .setup = &mycontroller_setup,
     .fetch = &mycontroller_coord_fetch,
     // if your controller does not supports auto config, leave this callback
-    // empty 如果你的控制器不支持自动获取配置，请将下面这条回调留空
+    // empty 如果你的控制器不支持自动获取配置，请将下面这条函数留空
     .get_config = &mycontroller_get_config};
 
 static u2hts_touch_controller mycontroller = {
     .name = "mycontroller",  // controller name 控制器名称
-    // I2C
+    // I2C related
     .i2c_addr = 0xFF,         // I2C slave addr I2C从机地址
     .alt_i2c_addr = 0xFE,     // Alternative I2C addr 替代I2C地址
     .i2c_speed = 400 * 1000,  // I2C speed in Hz I2C速度，单位为Hz
-    // SPI
+    // SPI related
     .spi_cpha = false,
     .spi_cpol = false,
-    .spi_speed = 1000 * 1000,           // Hz
-    .irq_type = IRQ_TYPE_EDGE_FALLING,  // irq type 中断类型
+    .spi_speed = 1000 * 1000,            // Hz
+    .irq_type = IRQ_TYPE_EDGE_FALLING,  // irq flag 中断标志
     .operations = &mycontroller_ops};
 
 static U2HTS_BUS_TYPES mycontroller_bus_type = UB_I2C;
@@ -173,7 +173,7 @@ inline static void mycontroller_coord_fetch(const u2hts_config* cfg,
     // 处理触摸数据
     u2hts_apply_config_to_tp(cfg, &report->tp[i]);
   }
-  // u2hts_core will fill report->scan_time
+  // no need to fill report->scan_time, it will be filled by u2hts_core.c
   // 不需要填写report->scan_time, u2hts_core.c会处理它
 }
 
