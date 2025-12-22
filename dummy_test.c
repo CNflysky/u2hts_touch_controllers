@@ -14,7 +14,7 @@
     - Enable polling mode.
     - set controller_name to "dummy".
   See `CMakeLists.txt` for build.
-  
+
   This file is licensed under GPL V3.
   All rights reserved.
 */
@@ -28,7 +28,7 @@ static bool dummy_setup(U2HTS_BUS_TYPES bus_type) {
 }
 
 static inline uint8_t random_tp_count() { return rand() % 10; }
-static inline void random_tp(u2hts_tp *tp) {
+static inline void random_tp(u2hts_tp* tp) {
   tp->contact = true;
   tp->x = rand() % 4096;
   tp->y = rand() % 4096;
@@ -37,8 +37,8 @@ static inline void random_tp(u2hts_tp *tp) {
   tp->pressure = rand() % 256;
 }
 
-static void dummy_coord_fetch(const u2hts_config *cfg,
-                              u2hts_hid_report *report) {
+static void dummy_coord_fetch(const u2hts_config* cfg,
+                              u2hts_hid_report* report) {
   report->tp_count = random_tp_count();
   for (uint8_t i = 0; i < report->tp_count; i++) {
     report->tp[i].id = i;
@@ -47,10 +47,10 @@ static void dummy_coord_fetch(const u2hts_config *cfg,
   }
 }
 
-static u2hts_touch_controller_config dummy_get_config() {
-  u2hts_touch_controller_config config = {
-      .max_tps = 10, .x_max = 4096, .y_max = 4096};
-  return config;
+static void dummy_get_config(u2hts_touch_controller_config* cfg) {
+  cfg->max_tps = 10;
+  cfg->x_max = 4095;
+  cfg->y_max = 4095;
 }
 
 static u2hts_touch_controller_operations dummy_ops = {

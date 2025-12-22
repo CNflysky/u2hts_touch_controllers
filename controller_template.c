@@ -11,7 +11,7 @@
 static bool mycontroller_setup(U2HTS_BUS_TYPES bus_type);
 static void mycontroller_coord_fetch(const u2hts_config* cfg,
                                      u2hts_hid_report* report);
-static u2hts_touch_controller_config mycontroller_get_config();
+static void mycontroller_get_config(u2hts_touch_controller_config* cfg);
 
 static u2hts_touch_controller_operations mycontroller_ops = {
     .setup = &mycontroller_setup,
@@ -161,7 +161,7 @@ inline static void mycontroller_coord_fetch(const u2hts_config* cfg,
   // read tp data
   // 读取触摸数据
   mycontroller_tp_data tp[tp_count];
-  mycontroller_i2c_read(MYCONTROLLER_TP_DATA_START_REG, &tp, sizeof(tp));
+  mycontroller_read(MYCONTROLLER_TP_DATA_START_REG, &tp, sizeof(tp));
   for (uint8_t i = 0; i < tp_count; i++) {
     report->tp[i].id = tp[i].id;
     report->tp[i].contact = true;
@@ -177,10 +177,10 @@ inline static void mycontroller_coord_fetch(const u2hts_config* cfg,
   // 不需要填写report->scan_time, u2hts_core.c会处理它
 }
 
-inline static u2hts_touch_controller_config mycontroller_get_config() {
+inline static void mycontroller_get_config(u2hts_touch_controller_config* cfg) {
   mycontroller_config mycfg = {0};
-  mycontroller_i2c_read(MYCONTROLLER_CONFIG_START_REG, &mycfg, sizeof(mycfg));
-  u2hts_touch_controller_config cfg = {
-      .max_tps = mycfg.max_tps, .x_max = mycfg.x_max, .y_max = mycfg.y_max};
-  return cfg;
+  mycontroller_read(MYCONTROLLER_CONFIG_START_REG, &mycfg, sizeof(mycfg));
+  cfg->x_max = mycfg.x_max;
+  cfg->y_max = mycfg.y_max;
+  cfg->max_tps = mycfg.max_tps;
 }

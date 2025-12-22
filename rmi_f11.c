@@ -12,7 +12,7 @@
 static bool rmi_f11_setup(U2HTS_BUS_TYPES bus_type);
 static void rmi_f11_coord_fetch(const u2hts_config* cfg,
                                 u2hts_hid_report* report);
-static u2hts_touch_controller_config rmi_f11_get_config();
+static void rmi_f11_get_config(u2hts_touch_controller_config* cfg);
 
 static u2hts_touch_controller_operations rmi_ops = {
     .setup = &rmi_f11_setup,
@@ -99,16 +99,14 @@ static void rmi_f11_coord_fetch(const u2hts_config* cfg,
   report->tp_count = tp_count;
 }
 
-static u2hts_touch_controller_config rmi_f11_get_config() {
-  u2hts_touch_controller_config config = {0};
+static void rmi_f11_get_config(u2hts_touch_controller_config* cfg) {
   uint8_t tps = rmi_f11_query_read(1) & 0x7;
-  config.max_tps = (tps <= 4) ? tps + 1 : 10;
-  rmi_f11_max_tps = config.max_tps;
-  rmi_i2c_read(rmi_f11.i2c_addr, f11.ctrl_base + 6, &config.x_max,
-               sizeof(config.x_max));
-  rmi_i2c_read(rmi_f11.i2c_addr, f11.ctrl_base + 8, &config.y_max,
-               sizeof(config.y_max));
-  return config;
+  cfg->max_tps = (tps <= 4) ? tps + 1 : 10;
+  rmi_f11_max_tps = cfg->max_tps;
+  rmi_i2c_read(rmi_f11.i2c_addr, f11.ctrl_base + 6, &cfg->x_max,
+               sizeof(cfg->x_max));
+  rmi_i2c_read(rmi_f11.i2c_addr, f11.ctrl_base + 8, &cfg->y_max,
+               sizeof(cfg->y_max));
 }
 
 static bool rmi_f11_setup(U2HTS_BUS_TYPES bus_type) {

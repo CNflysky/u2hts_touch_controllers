@@ -11,7 +11,7 @@
 static bool gt9xx_setup(U2HTS_BUS_TYPES bus_type);
 static void gt9xx_coord_fetch(const u2hts_config* cfg,
                               u2hts_hid_report* report);
-static u2hts_touch_controller_config gt9xx_get_config();
+static void gt9xx_get_config(u2hts_touch_controller_config* cfg);
 
 static u2hts_touch_controller_operations gt9xx_ops = {
     .setup = &gt9xx_setup,
@@ -88,13 +88,13 @@ static uint16_t gt9xx_get_config_start_addr(const char* product_id) {
   return GT9XX_GT9X_CONFIG_START_REG;
 }
 
-static u2hts_touch_controller_config gt9xx_get_config() {
-  gt9xx_config cfg = {0};
-  gt9xx_i2c_read(gt9xx_get_config_start_addr(gt9xx_product_id), &cfg,
-                 sizeof(cfg));
-  u2hts_touch_controller_config u2hts_tc_cfg = {
-      .max_tps = cfg.max_tps, .x_max = cfg.x_max - 1, .y_max = cfg.y_max - 1};
-  return u2hts_tc_cfg;
+static void gt9xx_get_config(u2hts_touch_controller_config* cfg) {
+  gt9xx_config gt_cfg = {0};
+  gt9xx_i2c_read(gt9xx_get_config_start_addr(gt9xx_product_id), &gt_cfg,
+                 sizeof(gt_cfg));
+  cfg->x_max = gt_cfg.x_max - 1;
+  cfg->y_max = gt_cfg.y_max - 1;
+  cfg->max_tps = gt_cfg.max_tps;
 }
 
 inline static void gt9xx_clear_irq() { gt9xx_write_byte(GT9XX_STATUS_REG, 0); }
