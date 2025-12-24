@@ -23,7 +23,7 @@
 #include "u2hts_core.h"
 static bool dummy_setup(U2HTS_BUS_TYPES bus_type) {
   U2HTS_UNUSED(bus_type);
-  srand(u2hts_get_scan_time());
+  srand(u2hts_get_timestamp());
   return true;
 }
 
@@ -43,7 +43,7 @@ static void dummy_coord_fetch(const u2hts_config* cfg,
   for (uint8_t i = 0; i < report->tp_count; i++) {
     report->tp[i].id = i;
     random_tp(&report->tp[i]);
-    u2hts_apply_config_to_tp(cfg, &report->tp[i]);
+    u2hts_transform_touch_data(cfg, &report->tp[i]);
   }
 }
 

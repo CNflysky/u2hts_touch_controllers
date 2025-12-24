@@ -76,5 +76,5 @@ inline static void cst8xx_coord_fetch(const u2hts_config* cfg,
   report->tp[0].id = 0;
   report->tp[0].x = (tp.x_h & 0xF) << 8 | tp.x_l;
   report->tp[0].y = (tp.y_h & 0xF) << 8 | tp.y_l;
-  u2hts_apply_config_to_tp(cfg, &report->tp[0]);
+  u2hts_transform_touch_data(cfg, &report->tp[0]);
 }

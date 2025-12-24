@@ -85,6 +85,6 @@ inline static void ft54x6_coord_fetch(const u2hts_config *cfg,
     report->tp[i].id = tp[i].y_h >> 4;
     report->tp[i].x = (tp[i].x_h & 0xF) << 8 | tp[i].x_l;
     report->tp[i].y = (tp[i].y_h & 0xF) << 8 | tp[i].y_l;
-    u2hts_apply_config_to_tp(cfg, &report->tp[i]);
+    u2hts_transform_touch_data(cfg, &report->tp[i]);
   }
 }

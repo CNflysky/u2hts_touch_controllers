@@ -92,7 +92,7 @@ static void rmi_f11_coord_fetch(const u2hts_config* cfg,
       report->tp[tp_index].width = f11_data[i].wxy & 0xF;
       report->tp[tp_index].height = (f11_data[i].wxy & 0xF0) >> 4;
       report->tp[tp_index].pressure = f11_data[i].z;
-      u2hts_apply_config_to_tp(cfg, &report->tp[tp_index]);
+      u2hts_transform_touch_data(cfg, &report->tp[tp_index]);
       tp_index++;
     }
   }

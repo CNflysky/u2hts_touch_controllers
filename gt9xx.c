@@ -115,7 +115,7 @@ static void gt9xx_coord_fetch(const u2hts_config* cfg,
     report->tp[i].y = tp_data[i].y_coord;
     report->tp[i].width = tp_data[i].point_size_w;
     report->tp[i].height = tp_data[i].point_size_h;
-    u2hts_apply_config_to_tp(cfg, &report->tp[i]);
+    u2hts_transform_touch_data(cfg, &report->tp[i]);
   }
 }
 

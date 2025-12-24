@@ -169,9 +169,9 @@ inline static void mycontroller_coord_fetch(const u2hts_config* cfg,
     report->tp[i].y = tp[i].y;
     report->tp[i].width = tp[i].width;
     report->tp[i].height = tp[i].height;
-    // process tp data
-    // 处理触摸数据
-    u2hts_apply_config_to_tp(cfg, &report->tp[i]);
+    // transform tp data
+    // 转换触摸数据
+    u2hts_transform_touch_data(cfg, &report->tp[i]);
   }
   // u2hts_core will fill report->scan_time
   // 不需要填写report->scan_time, u2hts_core.c会处理它
