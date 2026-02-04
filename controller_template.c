@@ -22,6 +22,8 @@ static u2hts_touch_controller_operations mycontroller_ops = {
 
 static u2hts_touch_controller mycontroller = {
     .name = "mycontroller",  // controller name 控制器名称
+    .irq_type = IRQ_TYPE_EDGE_FALLING,  // irq type 中断类型
+    .report_mode = UTC_REPORT_MODE_CONTINOUS, // report mode 回报模式
     // I2C
     .i2c_addr = 0xFF,         // I2C slave addr I2C从机地址
     .alt_i2c_addr = 0xFE,     // Alternative I2C addr 替代I2C地址
@@ -30,7 +32,6 @@ static u2hts_touch_controller mycontroller = {
     .spi_cpha = false,
     .spi_cpol = false,
     .spi_speed = 1000 * 1000,           // Hz
-    .irq_type = IRQ_TYPE_EDGE_FALLING,  // irq type 中断类型
     .operations = &mycontroller_ops};
 
 static U2HTS_BUS_TYPES mycontroller_bus_type = UB_I2C;

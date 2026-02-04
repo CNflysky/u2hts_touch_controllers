@@ -37,7 +37,7 @@ static inline void random_tp(u2hts_tp* tp) {
   tp->pressure = rand() % 256;
 }
 
-static void dummy_coord_fetch(const u2hts_config* cfg,
+static bool dummy_coord_fetch(const u2hts_config* cfg,
                               u2hts_hid_report* report) {
   report->tp_count = random_tp_count();
   for (uint8_t i = 0; i < report->tp_count; i++) {
@@ -45,6 +45,7 @@ static void dummy_coord_fetch(const u2hts_config* cfg,
     random_tp(&report->tp[i]);
     u2hts_transform_touch_data(cfg, &report->tp[i]);
   }
+  return true;
 }
 
 static void dummy_get_config(u2hts_touch_controller_config* cfg) {
@@ -60,7 +61,8 @@ static u2hts_touch_controller_operations dummy_ops = {
 
 static u2hts_touch_controller dummy = {.name = "dummy",
                                        .i2c_addr = 0x00,
-                                       .i2c_speed = 100 * 1000,  // 100 KHz
                                        .irq_type = 0xFF,
+                                       .report_mode = UTC_REPORT_MODE_CONTINOUS,
+                                       .i2c_speed = 100 * 1000,  // 100 KHz
                                        .operations = &dummy_ops};
 U2HTS_TOUCH_CONTROLLER(dummy);

@@ -9,7 +9,7 @@
 #include "u2hts_core.h"
 
 static bool gt9xx_setup(U2HTS_BUS_TYPES bus_type);
-static void gt9xx_coord_fetch(const u2hts_config* cfg,
+static bool gt9xx_coord_fetch(const u2hts_config* cfg,
                               u2hts_hid_report* report);
 static void gt9xx_get_config(u2hts_touch_controller_config* cfg);
 
@@ -19,10 +19,11 @@ static u2hts_touch_controller_operations gt9xx_ops = {
     .get_config = &gt9xx_get_config};
 
 static u2hts_touch_controller gt9xx = {.name = "gt9xx",
+                                       .irq_type = IRQ_TYPE_EDGE_FALLING,
+                                       .report_mode = UTC_REPORT_MODE_CONTINOUS,
                                        .i2c_addr = 0x5d,
                                        .alt_i2c_addr = 0x14,
                                        .i2c_speed = 400 * 1000,  // 400 KHz
-                                       .irq_type = IRQ_TYPE_EDGE_FALLING,
                                        .operations = &gt9xx_ops};
 
 U2HTS_TOUCH_CONTROLLER(gt9xx);
@@ -99,11 +100,11 @@ static void gt9xx_get_config(u2hts_touch_controller_config* cfg) {
 
 inline static void gt9xx_clear_irq() { gt9xx_write_byte(GT9XX_STATUS_REG, 0); }
 
-static void gt9xx_coord_fetch(const u2hts_config* cfg,
+static bool gt9xx_coord_fetch(const u2hts_config* cfg,
                               u2hts_hid_report* report) {
   uint8_t tp_count = gt9xx_read_byte(GT9XX_STATUS_REG) & 0xF;
   gt9xx_clear_irq();
-  if (tp_count == 0) return;
+  if (tp_count == 0) return false;
   tp_count = (tp_count < cfg->max_tps) ? tp_count : cfg->max_tps;
   report->tp_count = tp_count;
   gt9xx_tp_data tp_data[tp_count];
@@ -117,6 +118,7 @@ static void gt9xx_coord_fetch(const u2hts_config* cfg,
     report->tp[i].height = tp_data[i].point_size_h;
     u2hts_transform_touch_data(cfg, &report->tp[i]);
   }
+  return true;
 }
 
 static bool gt9xx_setup(U2HTS_BUS_TYPES bus_type) {

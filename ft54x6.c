@@ -8,17 +8,19 @@
 
 #include "u2hts_core.h"
 static bool ft54x6_setup(U2HTS_BUS_TYPES bus_type);
-static void ft54x6_coord_fetch(const u2hts_config *cfg,
-                               u2hts_hid_report *report);
+static bool ft54x6_coord_fetch(const u2hts_config* cfg,
+                               u2hts_hid_report* report);
 
 static u2hts_touch_controller_operations ft54x6_ops = {
     .setup = &ft54x6_setup, .fetch = &ft54x6_coord_fetch};
 
-static u2hts_touch_controller ft54x6 = {.name = "ft54x6",
-                                        .i2c_addr = 0x38,
-                                        .i2c_speed = 100 * 1000,  // 100 KHz
-                                        .irq_type = IRQ_TYPE_EDGE_FALLING,
-                                        .operations = &ft54x6_ops};
+static u2hts_touch_controller ft54x6 = {
+    .name = "ft54x6",
+    .irq_type = IRQ_TYPE_EDGE_FALLING,
+    .report_mode = UTC_REPORT_MODE_CONTINOUS,
+    .i2c_addr = 0x38,
+    .i2c_speed = 100 * 1000,  // 100 KHz
+    .operations = &ft54x6_ops};
 
 U2HTS_TOUCH_CONTROLLER(ft54x6);
 
@@ -46,7 +48,7 @@ typedef struct {
 
 #define FT54X6_TP_DATA_START_REG 0x03
 
-inline static void ft54x6_i2c_read(uint8_t reg, void *data, size_t data_size) {
+inline static void ft54x6_i2c_read(uint8_t reg, void* data, size_t data_size) {
   u2hts_i2c_mem_read(ft54x6.i2c_addr, reg, sizeof(reg), data, data_size);
 }
 
@@ -72,10 +74,10 @@ inline static bool ft54x6_setup(U2HTS_BUS_TYPES bus_type) {
   return ret;
 }
 
-inline static void ft54x6_coord_fetch(const u2hts_config *cfg,
-                                      u2hts_hid_report *report) {
+inline static bool ft54x6_coord_fetch(const u2hts_config* cfg,
+                                      u2hts_hid_report* report) {
   uint8_t tp_count = ft54x6_read_byte(FT54X6_TP_COUNT_REG);
-  if (tp_count == 0) return;
+  if (tp_count == 0) return false;
   tp_count = (tp_count < cfg->max_tps) ? tp_count : cfg->max_tps;
   ft54x6_tp_data tp[tp_count];
   ft54x6_i2c_read(FT54X6_TP_DATA_START_REG, &tp, sizeof(tp));
@@ -87,4 +89,5 @@ inline static void ft54x6_coord_fetch(const u2hts_config *cfg,
     report->tp[i].y = (tp[i].y_h & 0xF) << 8 | tp[i].y_l;
     u2hts_transform_touch_data(cfg, &report->tp[i]);
   }
+  return true;
 }

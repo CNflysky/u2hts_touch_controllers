@@ -10,7 +10,7 @@
 
 #include "rmi_common.h"
 static bool rmi_f11_setup(U2HTS_BUS_TYPES bus_type);
-static void rmi_f11_coord_fetch(const u2hts_config* cfg,
+static bool rmi_f11_coord_fetch(const u2hts_config* cfg,
                                 u2hts_hid_report* report);
 static void rmi_f11_get_config(u2hts_touch_controller_config* cfg);
 
@@ -19,12 +19,14 @@ static u2hts_touch_controller_operations rmi_ops = {
     .fetch = &rmi_f11_coord_fetch,
     .get_config = &rmi_f11_get_config};
 
-static u2hts_touch_controller rmi_f11 = {.name = "rmi_f11",
-                                         .irq_type = IRQ_TYPE_LEVEL_LOW,
-                                         .i2c_addr = 0x2c,
-                                         .alt_i2c_addr = 0x20,
-                                         .i2c_speed = 400 * 1000,  // 400 KHz
-                                         .operations = &rmi_ops};
+static u2hts_touch_controller rmi_f11 = {
+    .name = "rmi_f11",
+    .irq_type = IRQ_TYPE_LEVEL_LOW,
+    .report_mode = UTC_REPORT_MODE_CONTINOUS,
+    .i2c_addr = 0x2c,
+    .alt_i2c_addr = 0x20,
+    .i2c_speed = 400 * 1000,  // 400 KHz
+    .operations = &rmi_ops};
 
 U2HTS_TOUCH_CONTROLLER(rmi_f11);
 
@@ -65,7 +67,7 @@ inline static void rmi_f11_cmd_write(uint16_t offset, uint8_t value) {
   rmi_cmd_write(rmi_f11.i2c_addr, &f11, offset, value);
 }
 
-static void rmi_f11_coord_fetch(const u2hts_config* cfg,
+static bool rmi_f11_coord_fetch(const u2hts_config* cfg,
                                 u2hts_hid_report* report) {
   // read irq reg to clear irq
   rmi_clear_irq(rmi_f11.i2c_addr);
@@ -97,6 +99,7 @@ static void rmi_f11_coord_fetch(const u2hts_config* cfg,
     }
   }
   report->tp_count = tp_count;
+  return true;
 }
 
 static void rmi_f11_get_config(u2hts_touch_controller_config* cfg) {
