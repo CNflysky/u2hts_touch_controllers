@@ -1,10 +1,11 @@
 # U2HTS touch controllers
-| Vendor / 制造商 | Series / 系列 | Auto configuration / 自动配置 | Test / 测试 | Controller name /  控制器名 | 总线 / Buses |
-| --- | --- | --- | --- | --- | --- |
-| Goodix / 汇顶 | `GT9xx` | Y | GT5688 | `gt9xx` | I2C |
-| Synaptics / 新思 | `RMI4-F11-I2C` | Y | S7300B | `rmi_f11` | I2C/SPI |
-| Focaltech / 敦泰 | `FT54x6` | N | ft3168, ft5406 |  `ft54x6` | I2C |
-| Hynitron / 海栎创 | `CST8xx` | N | cst816d | `cst8xx` | I2C |
+| Vendor / 制造商 | Series / 系列 | Auto configuration / 自动配置 | Test / 测试 | Controller name /  控制器名 | 总线 / Buses | Custom controller config / 自定义控制器配置 | 
+| --- | --- | --- | --- | --- | --- | --- |
+| Goodix / 汇顶 | `GT9xx` | Y | GT5688 | `gt9xx` | I2C | |
+| Synaptics / 新思 | `RMI4-F11-I2C` | Y | S7300B | `rmi_f11` | I2C/SPI | |
+| Focaltech / 敦泰 | `FT54x6` | N | ft3168, ft5406 |  `ft54x6` | I2C | |
+| Hynitron / 海栎创 | `CST8xx` | N | cst816d | `cst8xx` | I2C | |
+| dummy / 虚拟 | Report rate test / 回报率测试 | Y | N/A | `dummy` | N/A | dummy.rand_seed / 随机数种子 |
 
 **Note**: 
 - Currently only I2C bus supports controller detection.
