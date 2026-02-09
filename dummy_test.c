@@ -21,9 +21,13 @@
 #include <stdlib.h>
 
 #include "u2hts_core.h"
-static bool dummy_setup(U2HTS_BUS_TYPES bus_type) {
+static bool dummy_setup(U2HTS_BUS_TYPES bus_type,
+                        const char* custom_controller_config) {
   U2HTS_UNUSED(bus_type);
-  srand(u2hts_get_timestamp());
+  int32_t rand_seed = 0;
+  u2hts_get_custom_config_i32("dummy.rand_seed");
+  if (rand_seed < 0) rand_seed = u2hts_get_timestamp();
+  srand(rand_seed);
   return true;
 }
 
@@ -60,9 +64,7 @@ static u2hts_touch_controller_operations dummy_ops = {
     .get_config = &dummy_get_config};
 
 static u2hts_touch_controller dummy = {.name = "dummy",
-                                       .i2c_addr = 0x00,
                                        .irq_type = 0xFF,
                                        .report_mode = UTC_REPORT_MODE_CONTINOUS,
-                                       .i2c_speed = 100 * 1000,  // 100 KHz
                                        .operations = &dummy_ops};
 U2HTS_TOUCH_CONTROLLER(dummy);

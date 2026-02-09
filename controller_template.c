@@ -8,8 +8,9 @@
 */
 
 #include "u2hts_core.h"
-static bool mycontroller_setup(U2HTS_BUS_TYPES bus_type);
-static void mycontroller_coord_fetch(const u2hts_config* cfg,
+static bool mycontroller_setup(U2HTS_BUS_TYPES bus_type,
+                               const char* custom_controller_config);
+static bool mycontroller_coord_fetch(const u2hts_config* cfg,
                                      u2hts_hid_report* report);
 static void mycontroller_get_config(u2hts_touch_controller_config* cfg);
 
@@ -21,17 +22,23 @@ static u2hts_touch_controller_operations mycontroller_ops = {
     .get_config = &mycontroller_get_config};
 
 static u2hts_touch_controller mycontroller = {
-    .name = "mycontroller",  // controller name 控制器名称
-    .irq_type = IRQ_TYPE_EDGE_FALLING,  // irq type 中断类型
-    .report_mode = UTC_REPORT_MODE_CONTINOUS, // report mode 回报模式
+    .name = "mycontroller",                    // controller name 控制器名称
+    .irq_type = IRQ_TYPE_EDGE_FALLING,         // irq type 中断类型
+    .report_mode = UTC_REPORT_MODE_CONTINOUS,  // report mode 回报模式
     // I2C
-    .i2c_addr = 0xFF,         // I2C slave addr I2C从机地址
-    .alt_i2c_addr = 0xFE,     // Alternative I2C addr 替代I2C地址
-    .i2c_speed = 400 * 1000,  // I2C speed in Hz I2C速度，单位为Hz
+    .i2c_config =
+        {
+            .addr = 0xFF,            // I2C slave addr I2C从机地址
+            .speed_hz = 400 * 1000,  // I2C speed in Hz I2C速度，单位为Hz
+        },
+    .alt_i2c_addr = 0xFE,  // Alternative I2C addr 替代I2C地址
     // SPI
-    .spi_cpha = false,
-    .spi_cpol = false,
-    .spi_speed = 1000 * 1000,           // Hz
+    .spi_config =
+        {
+            .cpha = false,
+            .cpol = false,
+            .speed_hz = 1000 * 1000,
+        },
     .operations = &mycontroller_ops};
 
 static U2HTS_BUS_TYPES mycontroller_bus_type = UB_I2C;
@@ -77,7 +84,7 @@ inline static void mycontroller_read(uint16_t reg, void* data,
                                      size_t data_size) {
   switch (mycontroller_bus_type) {
     case UB_I2C:
-      u2hts_i2c_mem_read(mycontroller.i2c_addr, reg, sizeof(reg), data,
+      u2hts_i2c_mem_read(mycontroller.i2c_config.addr, reg, sizeof(reg), data,
                          data_size);
       break;
     case UB_SPI:
@@ -95,7 +102,7 @@ inline static void mycontroller_write(uint16_t reg, void* data,
                                       size_t data_size) {
   switch (mycontroller_bus_type) {
     case UB_I2C:
-      u2hts_i2c_mem_write(mycontroller.i2c_addr, reg, sizeof(reg), data,
+      u2hts_i2c_mem_write(mycontroller.i2c_config.addr, reg, sizeof(reg), data,
                           data_size);
       break;
     case UB_SPI:
@@ -118,7 +125,15 @@ inline static void mycontroller_write_byte(uint16_t reg, uint8_t data) {
   mycontroller_write(reg, &data, sizeof(data));
 }
 
-inline static bool mycontroller_setup(U2HTS_BUS_TYPES bus_type) {
+inline static bool mycontroller_setup(U2HTS_BUS_TYPES bus_type,
+                                      const char* custom_controller_config) {
+  // if you want to pass extra custom argument, acquire it like this:
+  // 如果你需要传入额外的自定义参数，下面是获取它的方法
+  // assume mycontroller.custom_config1=100
+  // 假设设置了参数为mycontroller.custom_config1=100
+  int32_t custom_config_value =
+      u2hts_get_custom_config_i32("mycontroller.custom_config1");
+
   // do hardware reset
   // 进行硬件复位
   u2hts_tprst_set(false);
@@ -132,7 +147,7 @@ inline static bool mycontroller_setup(U2HTS_BUS_TYPES bus_type) {
 
   if (bus_type == UB_I2C) {  // detect controller
     // 检测控制器
-    bool ret = u2hts_i2c_detect_slave(mycontroller.i2c_addr);
+    bool ret = u2hts_i2c_detect_slave(mycontroller.i2c_config.addr);
     if (!ret) return ret;
   }
 
@@ -142,7 +157,7 @@ inline static bool mycontroller_setup(U2HTS_BUS_TYPES bus_type) {
   return true;
 }
 
-inline static void mycontroller_coord_fetch(const u2hts_config* cfg,
+inline static bool mycontroller_coord_fetch(const u2hts_config* cfg,
                                             u2hts_hid_report* report) {
   // this function will be called immediately when touch interrupt (ATTN)
   // triggered. some controller require clear it's internal interrupt flag after
@@ -151,19 +166,16 @@ inline static void mycontroller_coord_fetch(const u2hts_config* cfg,
 
   // 这个函数将会在触摸中断(ATTN)产生后立即执行。有一些控制器需要在触发中断后清除内置的中断标志，否则会一直产生ATTN信号。
   // 在这个示例中，我们向TP_COUNT_REG写入0x00来清除中断标志。
-
   uint8_t tp_count = mycontroller_read_byte(MYCONTROLLER_TP_COUNT_REG);
   // clear irq
   // 清中断标志
   mycontroller_write_byte(MYCONTROLLER_TP_COUNT_REG, 0x00);
-  if (tp_count == 0) return;
-  tp_count = (tp_count < cfg->max_tps) ? tp_count : cfg->max_tps;
-  report->tp_count = tp_count;
+  U2HTS_SET_TP_COUNT_SAFE(tp_count);
   // read tp data
   // 读取触摸数据
-  mycontroller_tp_data tp[tp_count];
+  mycontroller_tp_data tp[report->tp_count];
   mycontroller_read(MYCONTROLLER_TP_DATA_START_REG, &tp, sizeof(tp));
-  for (uint8_t i = 0; i < tp_count; i++) {
+  for (uint8_t i = 0; i < report->tp_count; i++) {
     report->tp[i].id = tp[i].id;
     report->tp[i].contact = true;
     report->tp[i].x = tp[i].x;
