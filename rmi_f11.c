@@ -9,8 +9,7 @@
 */
 
 #include "rmi_common.h"
-static bool rmi_f11_setup(U2HTS_BUS_TYPES bus_type,
-                          const char* custom_controller_config);
+static bool rmi_f11_setup(U2HTS_BUS_TYPES bus_type);
 static bool rmi_f11_coord_fetch(const u2hts_config* cfg,
                                 u2hts_hid_report* report);
 static void rmi_f11_get_config(u2hts_touch_controller_config* cfg);
@@ -114,8 +113,7 @@ static void rmi_f11_get_config(u2hts_touch_controller_config* cfg) {
                sizeof(cfg->y_max));
 }
 
-static bool rmi_f11_setup(U2HTS_BUS_TYPES bus_type,
-                          const char* custom_controller_config) {
+static bool rmi_f11_setup(U2HTS_BUS_TYPES bus_type) {
   int8_t f11_index = rmi_fetch_pdt(rmi_f11.i2c_config.addr, RMI_FUNC_F11, &f11);
   if (f11_index < 0) {
     U2HTS_LOG_ERROR("Failed to fetch F01/F11 PDT from device");

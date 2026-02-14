@@ -7,8 +7,7 @@
 */
 
 #include "u2hts_core.h"
-static bool ft54x6_setup(U2HTS_BUS_TYPES bus_type,
-                         const char* custom_controller_config);
+static bool ft54x6_setup(U2HTS_BUS_TYPES bus_type);
 static bool ft54x6_coord_fetch(const u2hts_config* cfg,
                                u2hts_hid_report* report);
 
@@ -62,8 +61,7 @@ inline static uint8_t ft54x6_read_byte(uint8_t reg) {
   return var;
 }
 
-inline static bool ft54x6_setup(U2HTS_BUS_TYPES bus_type,
-                                const char* custom_controller_config) {
+inline static bool ft54x6_setup(U2HTS_BUS_TYPES bus_type) {
   U2HTS_UNUSED(bus_type);
   u2hts_tprst_set(false);
   u2hts_delay_ms(100);

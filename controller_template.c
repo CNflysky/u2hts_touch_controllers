@@ -8,8 +8,7 @@
 */
 
 #include "u2hts_core.h"
-static bool mycontroller_setup(U2HTS_BUS_TYPES bus_type,
-                               const char* custom_controller_config);
+static bool mycontroller_setup(U2HTS_BUS_TYPES bus_type);
 static bool mycontroller_coord_fetch(const u2hts_config* cfg,
                                      u2hts_hid_report* report);
 static void mycontroller_get_config(u2hts_touch_controller_config* cfg);
@@ -125,8 +124,7 @@ inline static void mycontroller_write_byte(uint16_t reg, uint8_t data) {
   mycontroller_write(reg, &data, sizeof(data));
 }
 
-inline static bool mycontroller_setup(U2HTS_BUS_TYPES bus_type,
-                                      const char* custom_controller_config) {
+inline static bool mycontroller_setup(U2HTS_BUS_TYPES bus_type) {
   // if you want to pass extra custom argument, acquire it like this:
   // 如果你需要传入额外的自定义参数，下面是获取它的方法
   // assume mycontroller.custom_config1=100

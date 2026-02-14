@@ -21,8 +21,7 @@
 #include <stdlib.h>
 
 #include "u2hts_core.h"
-static bool dummy_setup(U2HTS_BUS_TYPES bus_type,
-                        const char* custom_controller_config) {
+static bool dummy_setup(U2HTS_BUS_TYPES bus_type) {
   U2HTS_UNUSED(bus_type);
   int32_t rand_seed = 0;
   u2hts_get_custom_config_i32("dummy.rand_seed");

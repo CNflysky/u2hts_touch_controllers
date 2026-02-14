@@ -8,8 +8,7 @@
 
 #include "u2hts_core.h"
 
-static bool gt9xx_setup(U2HTS_BUS_TYPES bus_type,
-                        const char* custom_controller_config);
+static bool gt9xx_setup(U2HTS_BUS_TYPES bus_type);
 static bool gt9xx_coord_fetch(const u2hts_config* cfg,
                               u2hts_hid_report* report);
 static void gt9xx_get_config(u2hts_touch_controller_config* cfg);
@@ -123,8 +122,7 @@ static bool gt9xx_coord_fetch(const u2hts_config* cfg,
   return true;
 }
 
-static bool gt9xx_setup(U2HTS_BUS_TYPES bus_type,
-                        const char* custom_controller_config) {
+static bool gt9xx_setup(U2HTS_BUS_TYPES bus_type) {
   // GT9xx only supports I2C bus.
   U2HTS_UNUSED(bus_type);
   u2hts_tprst_set(false);
