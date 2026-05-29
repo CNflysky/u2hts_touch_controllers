@@ -47,8 +47,11 @@ static u2hts_touch_controller_operations dummy_ops = {
     .fetch = &dummy_coord_fetch,
     .get_config = &dummy_get_config};
 
-static u2hts_touch_controller dummy = {.name = "dummy",
-                                       .irq_type = 0xFF,
-                                       .report_mode = UTC_REPORT_MODE_CONTINOUS,
-                                       .operations = &dummy_ops};
+static u2hts_touch_controller dummy = {
+    .name = "dummy",
+    .irq_type = 0xFF,
+    .report_mode = UTC_REPORT_MODE_CONTINOUS,
+    // bypass u2hts_init bus type detection
+    .i2c_config = {.primary_addr = 0xFF, .speed_hz = 100 * 1000},
+    .operations = &dummy_ops};
 U2HTS_TOUCH_CONTROLLER(dummy);
