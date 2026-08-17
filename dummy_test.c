@@ -3,8 +3,8 @@
   U2HTS stands for "USB to HID TouchScreen".
 
   dummy_test.c: generate random coordinates report to host.
-  WARNING: THIS DRIVER IS INTENDED FOR TOUCH REPORT RATE MEASUREMENT,
-  IT GENERATES LOT OF RANDOM TOUCHS MAY CAUSE UNEXPECTED BEHAVIOUR ON YOUR HOST!
+  WARNING: THIS DRIVER IS DESIGNED FOR REPORT RATE MEASUREMENT,
+  RANDOM TOUCHS MAY CAUSE UNEXPECTED BEHAVIOUR ON YOUR HOST!
   To monitor input device report rate:
     - Build the "getevent" tool (originally from Android, you can find many
   Linux ports on GitHub):
@@ -21,6 +21,16 @@
 #include <stdlib.h>
 
 #include "u2hts_core.h"
+
+static unsigned long int u2hts_rand_state = 1;
+
+__weak_symbol void srand(unsigned int seed) { u2hts_rand_state = seed; }
+
+__weak_symbol int rand(void) {
+  u2hts_rand_state = u2hts_rand_state * 1103515245UL + 12345UL;
+  return (int)((u2hts_rand_state >> 16) & 0x7FFF);
+}
+
 static bool dummy_setup(U2HTS_BUS_TYPES bus_type) {
   U2HTS_UNUSED(bus_type);
   srand(u2hts_get_custom_config_u32("dummy.rand_seed", u2hts_get_timestamp()));
