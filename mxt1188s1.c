@@ -6,6 +6,7 @@
 */
 
 #include "u2hts_core.h"
+#include <string.h>
 
 static bool mxt1188s1_setup(U2HTS_BUS_TYPES bus_type);
 static bool mxt1188s1_service(void);
@@ -269,7 +270,10 @@ static int mxt1188s1_read_message_pending_count(void) {
 }
 
 static bool mxt1188s1_service(void) {
-  uint8_t active_tp_count = 0;
+  // Track which touch id is active.
+  int8_t tp_slot[U2HTS_MAX_TPS];
+  memset(tp_slot, -1, sizeof(tp_slot));
+  int8_t next_slot = 0;
 
   while (true) {
     int message_count = mxt1188s1_read_message_pending_count();
@@ -296,7 +300,16 @@ static bool mxt1188s1_service(void) {
       mxt1188s1_report_t9_t *report = (mxt1188s1_report_t9_t *)(buf + 1);
       
       uint8_t touch_id = report_id - mxt1188s1_driver.t9_report_id_start;
-      
+      int8_t slot = tp_slot[touch_id];
+      if (slot == -1) {
+        slot = next_slot++;
+        if (slot >= U2HTS_MAX_TPS) {
+          U2HTS_LOG_WARN("Too many touch points, dropping touch %d", touch_id);
+          continue;
+        }
+        tp_slot[touch_id] = slot;
+      }
+
       bool fDetect  = (report->status & MXT1188S1_T9_STATUS_DETECT);
       bool fPress   = (report->status & MXT1188S1_T9_STATUS_PRESS);
       bool fRelease = (report->status & MXT1188S1_T9_STATUS_RELEASE);
@@ -308,15 +321,19 @@ static bool mxt1188s1_service(void) {
       uint16_t x = ((uint16_t)report->xposmsb << 4) | ((report->xyposlsb >> 4) & 0x0F);
       uint16_t y = ((uint16_t)report->yposmsb << 4) | (report->xyposlsb & 0x0F);
             
-      u2hts_set_tp(touch_id, fDetect, touch_id, x, y, report->tcharea, report->tcharea, report->tchamplitude);
-      active_tp_count++;
+      u2hts_set_tp(slot, fDetect, touch_id, x, y, report->tcharea, report->tcharea, report->tchamplitude);      
     }
   }
 
-  if (active_tp_count == 0) {
-    return false;
+  uint8_t tp_count = 0;
+  for (int8_t i = 0; i < U2HTS_MAX_TPS; i++) {
+    if (tp_slot[i] != -1) {
+      tp_count++;
+    }
   }
 
-  u2hts_set_tp_count(active_tp_count);
+  if (tp_count == 0) return false;
+
+  u2hts_set_tp_count(tp_count);
   return true;
 }
