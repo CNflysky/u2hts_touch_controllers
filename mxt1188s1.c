@@ -276,16 +276,6 @@ static bool mxt1188s1_service(void) {
   int8_t next_slot = 0;
 
   while (true) {
-    int message_count = mxt1188s1_read_message_pending_count();
-
-    if (message_count < 0) {
-      U2HTS_LOG_ERROR("%s aborting service loop", __func__);
-      return false;
-    }
-
-    if (message_count == 0) {
-      break;
-    }
 
     // Read message from T5
     uint8_t buf[mxt1188s1_driver.t5_size];
@@ -295,6 +285,12 @@ static bool mxt1188s1_service(void) {
     }
 
     uint8_t report_id = buf[0];
+
+    if (report_id == 0xFF) {
+      // ... reached to the end of messages ...
+      break;
+    }
+
     if (report_id >= mxt1188s1_driver.t9_report_id_start && report_id <= mxt1188s1_driver.t9_report_id_end) {
       // Received T9 report, update slot state
       mxt1188s1_report_t9_t *report = (mxt1188s1_report_t9_t *)(buf + 1);
@@ -323,6 +319,10 @@ static bool mxt1188s1_service(void) {
             
       u2hts_set_tp(slot, fDetect, touch_id, x, y, report->tcharea, report->tcharea, report->tchamplitude);      
     }
+    else {
+      U2HTS_LOG_WARN("Unexpected report id 0x%02X", report_id);
+    }
+
   }
 
   uint8_t tp_count = 0;
