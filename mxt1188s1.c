@@ -253,7 +253,7 @@ static bool mxt1188s1_setup(U2HTS_BUS_TYPES bus_type) {
   // Configure T7 Power Configuration for 100Hz (10ms active scan, 32ms idle scan)
   if (mxt1188s1_driver.t7_address != 0) {
     mxt1188s1_t7_power_config_t power_cfg = {
-      .idleacqint  = 32,   // 32ms (~31Hz) idle scan rate
+      .idleacqint  = 20,   // 20ms (~50Hz) idle scan rate
       .actvacqint  = 10,   // 10ms (100Hz) active touch scan rate
       .actv2idleto = 5,    // 1 second timeout (5 * 200ms) before transitioning to idle
       .cfg         = 0x03  // ACTVPIPEEN (bit 1) | IDLEPIPEEN (bit 0)
@@ -261,7 +261,7 @@ static bool mxt1188s1_setup(U2HTS_BUS_TYPES bus_type) {
     if (!mxt1188s1_write(mxt1188s1_driver.t7_address, &power_cfg, sizeof(power_cfg))) {
       U2HTS_LOG_WARN("mXT1188S - Failed to write T7 power config");
     } else {
-      U2HTS_LOG_INFO("mXT1188S - Configured T7 scan rate: 100Hz (10ms active, 32ms idle)");
+      U2HTS_LOG_INFO("mXT1188S - Configured T7 scan rate: 100Hz (10ms active, 20ms idle)");
     }
   }
 
