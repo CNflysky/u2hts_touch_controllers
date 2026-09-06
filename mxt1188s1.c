@@ -120,8 +120,19 @@ typedef struct __packed {
   uint8_t tchvector;    // Byte 7: Touch vector
 } mxt1188s1_report_t9_t;
 
+// Power Configuration T7 structure (4 bytes)
+typedef struct __packed {
+  uint8_t idleacqint;   // Byte 0: Idle acquisition interval (ms)
+  uint8_t actvacqint;   // Byte 1: Active acquisition interval (ms) -> 10 = 100Hz
+  uint8_t actv2idleto;  // Byte 2: Active to Idle timeout (x 200ms)
+  uint8_t cfg;          // Byte 3: Config flags (bits 0: IDLEPIPEEN, 1: ACTVPIPEEN)
+} mxt1188s1_t7_power_config_t;
+
 // Driver internal state structure
 typedef struct {
+  uint16_t t7_address;
+  uint8_t  t7_size;
+
   uint16_t t9_address;
   uint8_t  t9_size;
   uint8_t  t9_instances;
@@ -158,22 +169,6 @@ static bool mxt1188s1_setup(U2HTS_BUS_TYPES bus_type) {
   u2hts_delay_ms(300);
   U2HTS_LOG_INFO("mXT1188S - Chip has been reset using RST line.");
 
-  // // Switch INT pin to input with pull-up so we can poll CHG (active-low open-drain)
-  // u2hts_tpint_set_mode(false /* input */, true /* pull-up */);
-
-  // // Wait for CHG (INT) to assert low, indicating device is ready.
-  // // Datasheet specifies up to ~300ms boot time; use 500ms timeout.
-  // {
-  //   uint32_t timeout_ms = 500;
-  //   while (u2hts_tpint_get() && timeout_ms--) {
-  //     u2hts_delay_ms(1);
-  //   }
-  //   if (timeout_ms == 0) {
-  //     U2HTS_LOG_WARN("mXT1188S1 CHG did not assert after reset, continuing anyway");
-  //   }
-  // }
-  // u2hts_delay_ms(25);  // settling time after CHG asserts
-
   // Read Information block header from address 0x0000
   mxt1188s1_information_block_t info_block;
   if (!mxt1188s1_read(0, &info_block, sizeof(info_block))) {
@@ -196,7 +191,7 @@ static bool mxt1188s1_setup(U2HTS_BUS_TYPES bus_type) {
     U2HTS_LOG_WARN("Unexpected Variant ID 0x%02X (expected 0x%02X for mXT1188S)", info_block.variant_id, MXT1188S1_VARIANT_ID);
   }
 
-  // Read object table to locate T44, T9, T5 objects needed for processing touch reports.
+  // Read object table to locate T7, T44, T9, T5 objects.
   mxt1188s1_object_table_element_t object_table;
   uint8_t report_id_start = 1;
   for (uint8_t i = 0; i < info_block.num_objects; i++) {
@@ -206,24 +201,29 @@ static bool mxt1188s1_setup(U2HTS_BUS_TYPES bus_type) {
       return false;
     }
 
-    if (object_table.type == 9) {
+    if (object_table.type == 7) {
+      mxt1188s1_driver.t7_address = object_table.start_address;
+      mxt1188s1_driver.t7_size = object_table.size + 1;
+      U2HTS_LOG_INFO("mXT1188S - Found T7 (Power Config) object at 0x%04x, size = %d",
+                     mxt1188s1_driver.t7_address, mxt1188s1_driver.t7_size);
+    } else if (object_table.type == 9) {
       mxt1188s1_driver.t9_report_id_start = report_id_start;
       mxt1188s1_driver.t9_report_id_end = report_id_start + object_table.num_report_ids - 1;
       mxt1188s1_driver.t9_address = object_table.start_address;
       mxt1188s1_driver.t9_size = object_table.size + 1;
       mxt1188s1_driver.t9_instances = object_table.instances + 1;
-      U2HTS_LOG_INFO("Found T9 object at 0x%04x, size = %d, instances = %d, report_ids = %d..%d",
+      U2HTS_LOG_INFO("mXT1188S - Found T9 object at 0x%04x, size = %d, instances = %d, report_ids = %d..%d",
                      mxt1188s1_driver.t9_address, mxt1188s1_driver.t9_size, mxt1188s1_driver.t9_instances,
                      mxt1188s1_driver.t9_report_id_start, mxt1188s1_driver.t9_report_id_end);
     } else if (object_table.type == 44) {
       mxt1188s1_driver.t44_address = object_table.start_address;
       mxt1188s1_driver.t44_size = object_table.size + 1;
-      U2HTS_LOG_INFO("Found T44 (Message Count) object at 0x%04x, size = %d",
+      U2HTS_LOG_INFO("mXT1188S - Found T44 (Message Count) object at 0x%04x, size = %d",
                      mxt1188s1_driver.t44_address, mxt1188s1_driver.t44_size);
     } else if (object_table.type == 5) {
       mxt1188s1_driver.t5_address = object_table.start_address;
       mxt1188s1_driver.t5_size = object_table.size + 1;
-      U2HTS_LOG_INFO("Found T5 (Message Processor) object at 0x%04x, size = %d",
+      U2HTS_LOG_INFO("mXT1188S - Found T5 (Message Processor) object at 0x%04x, size = %d",
                      mxt1188s1_driver.t5_address, mxt1188s1_driver.t5_size);
     }
 
@@ -250,7 +250,22 @@ static bool mxt1188s1_setup(U2HTS_BUS_TYPES bus_type) {
     return false;
   }
 
-  U2HTS_LOG_INFO("mXT1188S1 - Finished configuration.");
+  // Configure T7 Power Configuration for 100Hz (10ms active scan, 32ms idle scan)
+  if (mxt1188s1_driver.t7_address != 0) {
+    mxt1188s1_t7_power_config_t power_cfg = {
+      .idleacqint  = 32,   // 32ms (~31Hz) idle scan rate
+      .actvacqint  = 10,   // 10ms (100Hz) active touch scan rate
+      .actv2idleto = 5,    // 1 second timeout (5 * 200ms) before transitioning to idle
+      .cfg         = 0x03  // ACTVPIPEEN (bit 1) | IDLEPIPEEN (bit 0)
+    };
+    if (!mxt1188s1_write(mxt1188s1_driver.t7_address, &power_cfg, sizeof(power_cfg))) {
+      U2HTS_LOG_WARN("mXT1188S - Failed to write T7 power config");
+    } else {
+      U2HTS_LOG_INFO("mXT1188S - Configured T7 scan rate: 100Hz (10ms active, 32ms idle)");
+    }
+  }
+
+  U2HTS_LOG_INFO("mXT1188S - Finished configuration.");
   return true;
 }
 
