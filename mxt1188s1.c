@@ -89,16 +89,6 @@ inline static bool mxt1188s1_write(uint16_t addr, const void* buf, size_t len) {
   return true;
 }
 
-// Controller Information Block header (7 bytes)
-typedef struct __packed {
-  uint8_t family_id;
-  uint8_t variant_id;
-  uint8_t version;
-  uint8_t build;
-  uint8_t matrix_x_size;
-  uint8_t matrix_y_size;
-  uint8_t num_objects;
-} mxt1188s1_information_block_t;
 
 // Controller object table element (6 bytes)
 typedef struct __packed {
@@ -108,6 +98,18 @@ typedef struct __packed {
   uint8_t  instances;     // instances - 1
   uint8_t  num_report_ids;
 } mxt1188s1_object_table_element_t;
+
+// Controller Information Block header (7 bytes + object table)
+typedef struct __packed {
+  uint8_t family_id;
+  uint8_t variant_id;
+  uint8_t version;
+  uint8_t build;
+  uint8_t matrix_x_size;
+  uint8_t matrix_y_size;
+  uint8_t num_objects;
+  mxt1188s1_object_table_element_t object_table[];
+} mxt1188s1_information_block_t;
 
 // TOUCH_MULTITOUCHSCREEN_T9 message data (7 bytes payload following report_id)
 typedef struct __packed {
@@ -120,13 +122,20 @@ typedef struct __packed {
   uint8_t tchvector;    // Byte 7: Touch vector
 } mxt1188s1_report_t9_t;
 
-// Power Configuration T7 structure (4 bytes)
+// T7: Power Configuration structure (4 bytes)
 typedef struct __packed {
   uint8_t idleacqint;   // Byte 0: Idle acquisition interval (ms)
   uint8_t actvacqint;   // Byte 1: Active acquisition interval (ms) -> 10 = 100Hz
   uint8_t actv2idleto;  // Byte 2: Active to Idle timeout (x 200ms)
   uint8_t cfg;          // Byte 3: Config flags (bits 0: IDLEPIPEEN, 1: ACTVPIPEEN)
 } mxt1188s1_t7_power_config_t;
+
+// T5: Message Processor structure (largest report payload + 1 byte report_id + 1 byte checksum)
+typedef struct __packed {
+  uint8_t  report_id;
+  uint8_t  report_payload[];
+  /* uint8_t  checksum; */
+} mxt1188s1_t5_message_t;
 
 // Driver internal state structure
 typedef struct {
@@ -192,68 +201,72 @@ static bool mxt1188s1_setup(U2HTS_BUS_TYPES bus_type) {
   }
 
   // Read object table to locate T7, T44, T9, T5 objects.
-  mxt1188s1_object_table_element_t object_table;
+  mxt1188s1_object_table_element_t element;
   uint8_t report_id_start = 1;
   for (uint8_t i = 0; i < info_block.num_objects; i++) {
     uint16_t addr = (uint16_t)(sizeof(mxt1188s1_information_block_t) + i * sizeof(mxt1188s1_object_table_element_t));
-    if (!mxt1188s1_read(addr, &object_table, sizeof(object_table))) {
+    if (!mxt1188s1_read(addr, &element, sizeof(element))) {
       U2HTS_LOG_ERROR("%s read error, addr = 0x%04x", __func__, addr);
       return false;
     }
 
-    if (object_table.type == 7) {
-      mxt1188s1_driver.t7_address = object_table.start_address;
-      mxt1188s1_driver.t7_size = object_table.size + 1;
+    if (element.type == 7) {
+      mxt1188s1_driver.t7_address = element.start_address;
+      mxt1188s1_driver.t7_size = element.size + 1;
       U2HTS_LOG_INFO("mXT1188S - Found T7 (Power Config) object at 0x%04x, size = %d",
                      mxt1188s1_driver.t7_address, mxt1188s1_driver.t7_size);
-    } else if (object_table.type == 9) {
+    } else if (element.type == 9) {
       mxt1188s1_driver.t9_report_id_start = report_id_start;
-      mxt1188s1_driver.t9_report_id_end = report_id_start + object_table.num_report_ids - 1;
-      mxt1188s1_driver.t9_address = object_table.start_address;
-      mxt1188s1_driver.t9_size = object_table.size + 1;
-      mxt1188s1_driver.t9_instances = object_table.instances + 1;
+      mxt1188s1_driver.t9_report_id_end = report_id_start + element.num_report_ids - 1;
+      mxt1188s1_driver.t9_address = element.start_address;
+      mxt1188s1_driver.t9_size = element.size + 1;
+      mxt1188s1_driver.t9_instances = element.instances + 1;
       U2HTS_LOG_INFO("mXT1188S - Found T9 object at 0x%04x, size = %d, instances = %d, report_ids = %d..%d",
                      mxt1188s1_driver.t9_address, mxt1188s1_driver.t9_size, mxt1188s1_driver.t9_instances,
                      mxt1188s1_driver.t9_report_id_start, mxt1188s1_driver.t9_report_id_end);
-    } else if (object_table.type == 44) {
-      mxt1188s1_driver.t44_address = object_table.start_address;
-      mxt1188s1_driver.t44_size = object_table.size + 1;
+    } else if (element.type == 44) {
+      mxt1188s1_driver.t44_address = element.start_address;
+      mxt1188s1_driver.t44_size = element.size + 1;
       U2HTS_LOG_INFO("mXT1188S - Found T44 (Message Count) object at 0x%04x, size = %d",
                      mxt1188s1_driver.t44_address, mxt1188s1_driver.t44_size);
-    } else if (object_table.type == 5) {
-      mxt1188s1_driver.t5_address = object_table.start_address;
-      mxt1188s1_driver.t5_size = object_table.size + 1;
+    } else if (element.type == 5) {
+      mxt1188s1_driver.t5_address = element.start_address;
+      mxt1188s1_driver.t5_size = element.size + 1;
       U2HTS_LOG_INFO("mXT1188S - Found T5 (Message Processor) object at 0x%04x, size = %d",
                      mxt1188s1_driver.t5_address, mxt1188s1_driver.t5_size);
     }
 
-    report_id_start += object_table.num_report_ids * (object_table.instances + 1);
+    report_id_start += element.num_report_ids * (element.instances + 1);
   }
 
+  // ... T9 object is required because it generates touch reports ...
   if (mxt1188s1_driver.t9_address == 0) {
     U2HTS_LOG_ERROR("%s T9 object not found", __func__);
     return false;
   }
 
+  // ... T44 object is used to get report count in the fifo ...
   if (mxt1188s1_driver.t44_address == 0) {
     U2HTS_LOG_ERROR("%s T44 object not found", __func__);
     return false;
   }
 
+  // ... T5 object is used to retrieve reports from other objects ...
   if (mxt1188s1_driver.t5_address == 0) {
     U2HTS_LOG_ERROR("%s T5 object not found", __func__);
     return false;
   }
 
+  // ... T44 object size should be 1 (report count) ...
   if (mxt1188s1_driver.t44_size != 1) {
     U2HTS_LOG_ERROR("%s T44 object size is not 1", __func__);
     return false;
-  }
+  }  
 
-  // Configure T7 Power Configuration for 100Hz (10ms active scan, 32ms idle scan)
+  // ... configure touch screen for 100Hz (10ms active scan, 20ms idle scan) ...
   if (mxt1188s1_driver.t7_address != 0) {
     mxt1188s1_t7_power_config_t power_cfg = {
-      .idleacqint  = 20,   // 20ms (~50Hz) idle scan rate
+      .idleacqint  = 20,   // 20ms (50Hz) idle scan rate
       .actvacqint  = 10,   // 10ms (100Hz) active touch scan rate
       .actv2idleto = 5,    // 1 second timeout (5 * 200ms) before transitioning to idle
       .cfg         = 0x03  // ACTVPIPEEN (bit 1) | IDLEPIPEEN (bit 0)
