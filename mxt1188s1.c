@@ -130,6 +130,54 @@ typedef struct __packed {
   uint8_t cfg;          // Byte 3: Config flags (bits 0: IDLEPIPEEN, 1: ACTVPIPEEN)
 } mxt1188s1_t7_power_config_t;
 
+// T9: Configuration structure for TOUCH_MULTITOUCHSCREEN_T9 (47 bytes)
+typedef struct __packed {
+    uint8_t ctrl;             /* 0: Control register (Bitfield: SCANEN, DISPRSS, DISREL, DISMOVE, DISVECT, DISAMP, RPTEN, ENABLE) */
+    uint8_t xorigin;          /* 1: X line start position of object */
+    uint8_t yorigin;          /* 2: Y line start position of object */
+    uint8_t xsize;            /* 3: Number of X lines the object occupies */
+    uint8_t ysize;            /* 4: Number of Y lines the object occupies */
+    uint8_t akscfg;           /* 5: Adjacent Key Suppression config (Groups 1-8) */
+    uint8_t blen;             /* 6: Gain (Burst Length) */
+    uint8_t tchthr;           /* 7: Touch threshold */
+    uint8_t tchdi;            /* 8: Touch detect integration for first touch */
+    uint8_t orient;           /* 9: Orientation (Bitfield: INVERTY, INVERTX, SWITCH) */
+    uint8_t mrgtimeout;       /* 10: Merge timeout */
+    uint8_t movhysti;         /* 11: Movement hysteresis, initial */
+    uint8_t movhystn;         /* 12: Movement hysteresis, next */
+    uint8_t reserved_13;      /* 13: Reserved */
+    uint8_t numtouch;         /* 14: Number of reported touches */
+    uint8_t mrghyst;          /* 15: Merge hysteresis */
+    uint8_t mrgthr;           /* 16: Merge threshold */
+    uint8_t amphyst;          /* 17: Amplitude hysteresis */
+    uint8_t xrangelsb;        /* 18: X resolution (low byte) */
+    uint8_t xrangemsb;        /* 19: X resolution (high byte) */
+    uint8_t yrangelsb;        /* 20: Y resolution (low byte) */
+    uint8_t yrangemsb;        /* 21: Y resolution (high byte) */
+    uint8_t xloclip;          /* 22: X low clipping boundary width */
+    uint8_t xhiclip;          /* 23: X high clipping boundary width */
+    uint8_t yloclip;          /* 24: Y low clipping boundary width */
+    uint8_t yhiclip;          /* 25: Y high clipping boundary width */
+    uint8_t xedgectrl;        /* 26: X edge control (Bitfield: SPAN, DISLOCK, CORRECTIONGRADIENT) */
+    uint8_t xedgedist;        /* 27: X edge correction distance */
+    uint8_t yedgectrl;        /* 28: Y edge control (Bitfield: SPAN, RELUPDATE, CORRECTIONGRADIENT) */
+    uint8_t yedgedist;        /* 29: Y edge correction distance */
+    uint8_t jumplimit;        /* 30: Maximum position jump */
+    uint8_t tchhyst;          /* 31: Touch threshold hysteresis */
+    uint8_t xpitch;           /* 32: X line pitch */
+    uint8_t ypitch;           /* 33: Y line pitch */
+    uint8_t nexttchdi;        /* 34: Touch detect integration for subsequent touches */
+    uint8_t cfg;              /* 35: Configuration (Bitfield: RPTEACHCYCLE, ENHVECT) */
+    uint8_t movfilter2;       /* 36: Movement filter 2 (Bitfield: DISABLE, MEDOFF, SPEEDRESP) */
+    uint8_t movsmooth;        /* 37: Movement smoothing */
+    uint8_t movpred;          /* 38: Movement prediction */
+    uint8_t trackthrsf;       /* 39: Tracking threshold scaling factor */
+    uint8_t noisethrsf;       /* 40: Noise threshold scaling factor */
+    uint8_t reserved_41_44[4];/* 41-44: Reserved */
+    uint8_t mrgthradjstr;     /* 45: MRGTHR adjustment strength */
+    uint8_t cutoffthr;        /* 46: Cut-off threshold */
+} mxt1188s1_t9_config_t;
+
 // T5: Message Processor structure (largest report payload + 1 byte report_id + 1 byte checksum)
 typedef struct __packed {
   uint8_t  report_id;
@@ -153,6 +201,10 @@ typedef struct {
 
   uint16_t t44_address;
   uint8_t  t44_size;
+
+  uint16_t x_max;
+  uint16_t y_max;
+  uint8_t  nr_touches;
 } mxt1188s1_driver_info_t;
 
 static mxt1188s1_driver_info_t mxt1188s1_driver;
@@ -161,10 +213,8 @@ static bool mxt1188s1_setup(U2HTS_BUS_TYPES bus_type) {
   U2HTS_UNUSED(bus_type);
   memset(&mxt1188s1_driver, 0, sizeof(mxt1188s1_driver));
 
-  U2HTS_LOG_INFO("mXT1188S - Configuration for I2C (addr=0x%x, speed=%dkHz, bus=i2c%d, scl/sda=%d/%d)",
-                 MXT1188S1_I2C_ADDR, mxt1188s1.i2c_config.speed_hz / 1000,
-                PICO_DEFAULT_I2C, PICO_DEFAULT_I2C_SCL_PIN,
-                PICO_DEFAULT_I2C_SDA_PIN);
+  U2HTS_LOG_INFO("mXT1188S - Configuration for I2C (addr=0x%x, speed=%dkHz)", 
+    MXT1188S1_I2C_ADDR, mxt1188s1.i2c_config.speed_hz / 1000);
 
   // Switch INT pin to input with pull-up so CHG (open-drain) can operate
   u2hts_tpint_set_mode(false /* input */, true /* pull-up */);
@@ -261,7 +311,32 @@ static bool mxt1188s1_setup(U2HTS_BUS_TYPES bus_type) {
   if (mxt1188s1_driver.t44_size != 1) {
     U2HTS_LOG_ERROR("%s T44 object size is not 1", __func__);
     return false;
-  }  
+  }
+
+  // ... T9 object should be at least size of config ...
+  if (mxt1188s1_driver.t9_size < sizeof(mxt1188s1_t9_config_t)) {
+    U2HTS_LOG_ERROR("%s T9 object size is too small", __func__);
+    return false;
+  }
+
+  // ... read T9 object ...
+  mxt1188s1_t9_config_t t9_config;
+  if (!mxt1188s1_read(mxt1188s1_driver.t9_address, &t9_config, sizeof(t9_config))) {
+    U2HTS_LOG_ERROR("%s failed to read T9 object", __func__);
+    return false;
+  }
+  mxt1188s1_driver.x_max = t9_config.xrangelsb | ((uint16_t)t9_config.xrangemsb << 8);
+  mxt1188s1_driver.y_max = t9_config.yrangelsb | ((uint16_t)t9_config.yrangemsb << 8);
+  mxt1188s1_driver.nr_touches = t9_config.numtouch;
+  U2HTS_LOG_INFO("mXT1188S - T9 config: Max X: %d, Max Y: %d, Max touches: %d", 
+                  mxt1188s1_driver.x_max, mxt1188s1_driver.y_max, mxt1188s1_driver.nr_touches);
+
+  // ... confirm the number of touches that will be reported is within the limits of the driver ...
+  if (mxt1188s1_driver.nr_touches > U2HTS_MAX_TPS) {
+    U2HTS_LOG_ERROR("mXT1188S - Number of touches %d is greater than U2HTS_MAX_TPS %d", 
+                    mxt1188s1_driver.nr_touches, U2HTS_MAX_TPS);
+    return false;
+  }
 
   // ... configure touch screen for 100Hz (10ms active scan, 20ms idle scan) ...
   if (mxt1188s1_driver.t7_address != 0) {
@@ -283,29 +358,22 @@ static bool mxt1188s1_setup(U2HTS_BUS_TYPES bus_type) {
 }
 
 static void mxt1188s1_get_config(u2hts_touch_controller_config* cfg) {
-  cfg->max_tps = U2HTS_MAX_TPS;
-  cfg->x_max = U2HTS_LOGICAL_MAX;
-  cfg->y_max = U2HTS_LOGICAL_MAX;
+  cfg->max_tps = mxt1188s1_driver.nr_touches;
+  cfg->x_max = mxt1188s1_driver.x_max;
+  cfg->y_max = mxt1188s1_driver.y_max;
 }
 
-static int mxt1188s1_read_message_pending_count(void) {
-  uint8_t count;
-  if (!mxt1188s1_read(mxt1188s1_driver.t44_address, &count, 1)) {
-    U2HTS_LOG_ERROR("%s failed to read message count", __func__);
-    return -1;
-  }
-  return (int)count;
-}
+static uint8_t isqrt8(uint8_t n);
 
 static bool mxt1188s1_service(void) {
-  // Track which touch id is active.
+  // ... track report slots assigned to touch id for handling multiple messages per touch point ...
   int8_t tp_slot[U2HTS_MAX_TPS];
   memset(tp_slot, -1, sizeof(tp_slot));
   int8_t next_slot = 0;
 
   while (true) {
 
-    // Read message from T5
+    // ... read message from T5 (message queue) ...
     uint8_t buf[mxt1188s1_driver.t5_size];
     if (!mxt1188s1_read(mxt1188s1_driver.t5_address, buf, sizeof(buf))) {
       U2HTS_LOG_ERROR("%s failed to read message", __func__);
@@ -319,21 +387,26 @@ static bool mxt1188s1_service(void) {
       break;
     }
 
+    // ... if it's a T9 report (touch report), process it ...
     if (report_id >= mxt1188s1_driver.t9_report_id_start && report_id <= mxt1188s1_driver.t9_report_id_end) {
-      // Received T9 report, update slot state
       mxt1188s1_report_t9_t *report = (mxt1188s1_report_t9_t *)(buf + 1);
       
+      // ... get the touch id and confirm it is valid ...
       uint8_t touch_id = report_id - mxt1188s1_driver.t9_report_id_start;
+      if (touch_id >= mxt1188s1_driver.nr_touches) {
+        U2HTS_LOG_WARN("Invalid touch id: %d", touch_id);
+        continue;
+      }
+      
+      // ... find slot to report the touch ...
+      // ... reuse slot if id is already active (due to multiple T9 reports for the same touch point) ...
       int8_t slot = tp_slot[touch_id];
       if (slot == -1) {
         slot = next_slot++;
-        if (slot >= U2HTS_MAX_TPS) {
-          U2HTS_LOG_WARN("Too many touch points, dropping touch %d", touch_id);
-          continue;
-        }
         tp_slot[touch_id] = slot;
       }
 
+      // ... parse T9 status ...
       bool fDetect  = (report->status & MXT1188S1_T9_STATUS_DETECT);
       bool fPress   = (report->status & MXT1188S1_T9_STATUS_PRESS);
       bool fRelease = (report->status & MXT1188S1_T9_STATUS_RELEASE);
@@ -342,10 +415,19 @@ static bool mxt1188s1_service(void) {
       U2HTS_UNUSED(fRelease);
       U2HTS_UNUSED(fMove);
 
+      // ... get the x and y position (12-bit mode) ...
       uint16_t x = ((uint16_t)report->xposmsb << 4) | ((report->xyposlsb >> 4) & 0x0F);
       uint16_t y = ((uint16_t)report->yposmsb << 4) | (report->xyposlsb & 0x0F);
-            
-      u2hts_set_tp(slot, fDetect, touch_id, x, y, report->tcharea, report->tcharea, report->tchamplitude);      
+
+      // ... handle the case where the touch controller is in 10-bit mode for either x or y ...
+      if (mxt1188s1_driver.x_max < 1024) { x = x >> 2; }
+      if (mxt1188s1_driver.y_max < 1024) { y = y >> 2; }
+
+      // ... convert touch area to width and height using isqrt ...
+      uint16_t width = isqrt8(report->tcharea);
+      uint16_t height = isqrt8(report->tcharea);
+      
+      u2hts_set_tp(slot, fDetect, touch_id, x, y, width, height, report->tchamplitude);      
     }
     else {
       U2HTS_LOG_WARN("Unexpected report id 0x%02X", report_id);
@@ -353,6 +435,7 @@ static bool mxt1188s1_service(void) {
 
   }
 
+  // ... count the number of active touch points ...
   uint8_t tp_count = 0;
   for (int8_t i = 0; i < U2HTS_MAX_TPS; i++) {
     if (tp_slot[i] != -1) {
@@ -364,4 +447,14 @@ static bool mxt1188s1_service(void) {
 
   u2hts_set_tp_count(tp_count);
   return true;
+}
+
+static uint8_t isqrt8(uint8_t n)
+{
+    uint8_t r = 0;
+    if (n >= 64) r |= 8, n -= 64;
+    if (n >= (r << 3) + 16) r |= 4, n -= (r << 3) + 16;
+    if (n >= (r << 2) +  4) r |= 2, n -= (r << 2) +  4;
+    if (n >= (r << 1) +  1) r |= 1;
+    return r;
 }
