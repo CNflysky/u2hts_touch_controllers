@@ -1,9 +1,8 @@
 /*
-  Copyright (C) CNflysky.
+  Copyright (C) U2HTS Developers. All rights reserved.
   U2HTS stands for "USB to HID TouchScreen".
   chsc6540.c: chsc6540 driver
   This file is licensed under GPL V3.
-  All rights reserved.
 */
 
 // This controller has 2 bugs:

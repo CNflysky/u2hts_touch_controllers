@@ -1,11 +1,10 @@
 /*
-  Copyright (C) CNflysky.
+  Copyright (C) U2HTS Developers. All rights reserved.
   U2HTS stands for "USB to HID TouchScreen".
   goodix_normandy.c: touch driver for Goodix Normandy series touch
   controllers. Tested on:
     - GT9886
   This file is licensed under GPL V3.
-  All rights reserved.
 */
 
 #include "u2hts_core.h"

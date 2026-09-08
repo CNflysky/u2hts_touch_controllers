@@ -1,9 +1,8 @@
 /*
-  Copyright (C) CNflysky.
+  Copyright (C) U2HTS Developers. All rights reserved.
   U2HTS stands for "USB to HID TouchScreen".
   ft54x6.c: ft54x6 driver
   This file is licensed under GPL V3.
-  All rights reserved.
 */
 
 #include "u2hts_core.h"

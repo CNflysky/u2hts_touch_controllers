@@ -1,5 +1,5 @@
 /*
-  Copyright (C) CNflysky.
+  Copyright (C) U2HTS Developers. All rights reserved.
   U2HTS stands for "USB to HID TouchScreen".
 
   dummy_test.c: generate random coordinates report to host.
@@ -16,7 +16,6 @@
   See `CMakeLists.txt` for build.
 
   This file is licensed under GPL V3.
-  All rights reserved.
 */
 #include <stdlib.h>
 

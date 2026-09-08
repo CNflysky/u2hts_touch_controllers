@@ -1,11 +1,10 @@
 /*
-  Copyright (C) CNflysky.
+  Copyright (C) U2HTS Developers. All rights reserved.
   U2HTS stands for "USB to HID TouchScreen".
   rmi_f11.c: Synaptics F11 driver based on RMI4-I2C.
   Tested on:
     - Synaptics S7300B
   This file is licensed under GPL V3.
-  All rights reserved.
 */
 
 #include "rmi_common.h"

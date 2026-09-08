@@ -1,10 +1,9 @@
 /*
-  Copyright (C) CNflysky.
+  Copyright (C) U2HTS Developers. All rights reserved.
   U2HTS stands for "USB to HID TouchScreen".
   contoller_template.c: template for customized controller.
   contoller_template.c: 自定义控制器模板。
   This file is licensed under GPL V3.
-  All rights reserved.
 */
 
 #include "u2hts_core.h"
