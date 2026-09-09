@@ -5,11 +5,12 @@
   This file is licensed under GPL V3.
 */
 
-// This controller has 2 bugs:
-// - Random IRQ fire. Not know this is related to my hardware, but setting IRQ
-// pin to input-pullup mode will randomly generate irq events.
-// Use polling mode can be a workaround.
-// - Randomly report data with all 0xFF filled.
+/*
+  Known issues
+  - Setting ATTN pin to input-pullup mode sometimes generate
+  irq without actual touch. Possible hardware glitch.
+  - Read data filled with 0xFF.
+*/
 
 #include "u2hts_core.h"
 
